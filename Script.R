@@ -67,6 +67,25 @@ Equity_all <- rbind(equity, equity_inv)
 Oaxaca_TTC_new <- oaxaca(formula = TTC_new ~ Personal_Pos_Grade.r + Age | Gender_oa , data = Equity_all, R = 10)
 Costs
 
+#Gaps
+#Unadjusted
+Salary_Men <- Oaxaca_TTC_new$y$y.A
+Total_Gap <- Oaxaca_TTC_new$y$y.A - Oaxaca_TTC_new$y$y.B
+Unadjusted_Gap <- Total_Gap / Salary_Men * 100
+Unadjusted_Gap
+
+#Adjusted
+#Grade
+Grade_g <- c("Personal_Pos_Grade.r")
+Column <- c("coef(explained)")
+Grade_Effect <- (Oaxaca_TTC_new$twofold$variables[[5]][Grade_g, Column] / Total_Gap) * Unadjusted_Gap 
+#Age
+Age_g <- c("Age")
+Age_Effect <- (Oaxaca_TTC_new$twofold$variables[[5]][Age_g, Column] / Total_Gap) * Unadjusted_Gap
+#Adjusted Gap
+Adjusted_Gap <- Unadjusted_Gap - Grade_Effect - Age_Effect
+Adjusted_Gap
+
 library(shiny)
 
 # Define UI ----
@@ -109,25 +128,3 @@ server <- function(input, output) {
 
 # Run the app ----
 shinyApp(ui = ui, server = server)
-
-
-#Gaps
-#Unadjusted
-Salary_Men <- Oaxaca_TTC_new$y$y.A
-Total_Gap <- Oaxaca_TTC_new$y$y.A - Oaxaca_TTC_new$y$y.B
-Unadjusted_Gap <- Total_Gap / Salary_Men * 100
-Unadjusted_Gap
-
-#Adjusted
-#Grade
-Grade_g <- c("Personal_Pos_Grade.r")
-Column <- c("coef(explained)")
-Grade_Effect <- (Oaxaca_TTC_new$twofold$variables[[5]][Grade_g, Column] / Total_Gap) * Unadjusted_Gap 
-#Age
-Age_g <- c("Age")
-Age_Effect <- (Oaxaca_TTC_new$twofold$variables[[5]][Age_g, Column] / Total_Gap) * Unadjusted_Gap
-#Adjusted Gap
-Adjusted_Gap <- Unadjusted_Gap - Grade_Effect - Age_Effect
-Adjusted_Gap
-
-
