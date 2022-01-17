@@ -1,0 +1,136 @@
+library(shiny)
+
+# Define UI ----
+ui <- fluidPage(theme = shinytheme("flatly"),
+  titlePanel("Pay Equity Calculator"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      helpText("Choose your options"),
+  
+      radioButtons(inputId="checkGroup", label=h3(strong("Scope of Increase")), 
+                   choices=c("Female", "All")),
+      
+      sliderInput("range", 
+                  label = h3(strong("CompaRatio Threshold")),
+                  min = 0, max = 100, value = c(90)),
+      
+      sliderInput("increase", 
+                  label = h3(strong("Increase in %")),
+                  min = 1, max = 2, value = c(0.05))
+    
+    ),
+  mainPanel(
+    textOutput("Costs"), textOutput("UnadjustedGap"), textOutput("Adjusted_Gap"), plotOutput("scatter")
+    
+  )
+  )
+)
+  
+
+# Define server logic ----
+server <- function(input, output) {
+  
+  output$Costs <- renderText({
+    if (input$checkGroup == "Female") {
+      equity <- subset(data, data$Mean_CR < input$range & data$Gender_num == 1)
+      equity_inv <- subset(data, data$Gender_num == 0 | (data$Mean_CR >= input$range & data$Gender_num == 1))
+    } else {
+      equity <- subset(data, data$Mean_CR < input$range)
+      equity_inv <- subset(data, data$Mean_CR >= input$range)
+    }
+    equity$TTC_new <- equity$TTC * input$increase
+    equity_inv$TTC_new <- equity_inv$TTC
+    Equity_all <- rbind(equity, equity_inv)
+    Costs <- sum(equity$TTC_new) - sum(equity$TTC)
+  })
+    
+  output$UnadjustedGap <- renderText({
+    
+    if (input$checkGroup == "Female") {
+      equity <- subset(data, data$Mean_CR < input$range & data$Gender_num == 1)
+      equity_inv <- subset(data, data$Gender_num == 0 | (data$Mean_CR >= input$range & data$Gender_num == 1))
+    } else {
+      equity <- subset(data, data$Mean_CR < input$range)
+      equity_inv <- subset(data, data$Mean_CR >= input$range)
+    }
+    equity$TTC_new <- equity$TTC * input$increase
+    equity_inv$TTC_new <- equity_inv$TTC
+    Equity_all <- rbind(equity, equity_inv)
+    
+    Oaxaca_TTC_new <- oaxaca(formula = TTC_new ~ Personal_Pos_Grade.r + Achievement+ Age + ADM + BCPM + CO + CS + FI + GM + HR + IT + IR + LE + MK + OPS + OE + PR + RE + SA + WAF | Gender_oa , data = Equity_all, R = 1)
+    Salary_Men <- Oaxaca_TTC_new$y$y.A
+    Total_Gap <- Oaxaca_TTC_new$y$y.A - Oaxaca_TTC_new$y$y.B
+    UnadjustedGap <- Total_Gap / Salary_Men * 100
+  })
+  
+  output$Adjusted_Gap <- renderText({
+    
+    if (input$checkGroup == "Female") {
+      equity <- subset(data, data$Mean_CR < input$range & data$Gender_num == 1)
+      equity_inv <- subset(data, data$Gender_num == 0 | (data$Mean_CR >= input$range & data$Gender_num == 1))
+    } else {
+      equity <- subset(data, data$Mean_CR < input$range)
+      equity_inv <- subset(data, data$Mean_CR >= input$range)
+    }
+    equity$TTC_new <- equity$TTC * input$increase
+    equity_inv$TTC_new <- equity_inv$TTC
+    Equity_all <- rbind(equity, equity_inv)
+    
+    Oaxaca_TTC_new <- oaxaca(formula = TTC_new ~ Personal_Pos_Grade.r + Achievement+ Age + ADM + BCPM + CO + CS + FI + GM + HR + IT + IR + LE + MK + OPS + OE + PR + RE + SA + WAF | Gender_oa , data = Equity_all, R = 1)
+    Salary_Men <- Oaxaca_TTC_new$y$y.A
+    Total_Gap <- Oaxaca_TTC_new$y$y.A - Oaxaca_TTC_new$y$y.B
+    UnadjustedGap <- Total_Gap / Salary_Men * 100
+    
+    #Adjusted
+    #Grade
+    Grade_g <- c("Personal_Pos_Grade.r")
+    Column <- c("coef(explained)")
+    Grade_Effect <- (Oaxaca_TTC_new$twofold$variables[[5]][Grade_g, Column] / Total_Gap) * UnadjustedGap 
+    #Age
+    Age_g <- c("Age")
+    Age_Effect <- (Oaxaca_TTC_new$twofold$variables[[5]][Age_g, Column] / Total_Gap) * UnadjustedGap
+    #Function
+    Function_g <- c("ADM","BCPM","CO","CS","FI","GM","HR","IT","IR","LE","MK","OPS","OE","PR","RE","SA","WAF")
+    Function_Effect <- (sum(Oaxaca_TTC_new$twofold$variables[[5]][Function_g, Column]) / Total_Gap) * UnadjustedGap
+    #Performance
+    Achievement_g <- c("Achievement")
+    Achievement_Effect <- (Oaxaca_TTC_new$twofold$variables[[5]][Achievement_g, Column] / Total_Gap) * UnadjustedGap
+    #Adjusted Gap
+    Adjusted_Gap <- UnadjustedGap - Grade_Effect - Age_Effect - Function_Effect - Achievement_Effect
+    Adjusted_Gap
+  })
+  
+  output$scatter <- renderPlot({
+    
+    if (input$checkGroup == "Female") {
+      equity <- subset(data, data$Mean_CR < input$range & data$Gender_num == 1)
+      equity_inv <- subset(data, data$Gender_num == 0 | (data$Mean_CR >= input$range & data$Gender_num == 1))
+    } else {
+      equity <- subset(data, data$Mean_CR < input$range)
+      equity_inv <- subset(data, data$Mean_CR >= input$range)
+    }
+    equity$TTC_new <- equity$TTC * input$increase
+    equity_inv$TTC_new <- equity_inv$TTC
+    Equity_all <- rbind(equity, equity_inv)
+    
+    scatterplot<-ggplot(Equity_all, aes( x=Personal_Pos_Grade, y=TTC_new, color=Gender))+theme_classic()+
+      geom_point(position = position_jitterdodge(), alpha=0.25) +scale_color_manual(values=colors)+
+      theme(axis.text.x = element_text(color = "grey20", size = 15, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+            axis.text.y = element_text(color = "grey20", size = 15, angle = 0, hjust = 1, vjust = 0, face = "plain"),  
+            axis.title.x = element_text(color = "grey20", size = 15, angle = 0, hjust = .5, vjust = 0, face = "plain"),
+            axis.title.y = element_text(color = "grey20", size = 15, angle = 90, hjust = .5, vjust = .5, face = "plain"),
+            legend.title = element_text(size=15), 
+            legend.text = element_text(size=15))+xlab("Grade") #+geom_boxplot()
+    scatterplot<-scatterplot+ stat_summary(
+      fun = mean, 
+      geom = "errorbar", 
+      aes(ymax = ..y.., ymin = ..y..), 
+      position = position_dodge(width = 1), 
+      width = 0.5,size=1.5)  
+    scatter <- scatterplot +ggtitle("")+theme(plot.title = element_text(color = "grey20", size = 15,  hjust = .5, vjust = .5, face = "plain"))
+  })
+}
+
+# Run the app ----
+shinyApp(ui = ui, server = server)
