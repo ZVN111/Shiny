@@ -1,0 +1,40 @@
+# Define UI ----
+ui <- fluidPage(theme = shinytheme("flatly"),
+  titlePanel(
+    h1(strong("Pay Equity Calculator"), align = "center")),
+  
+  sidebarLayout(
+    sidebarPanel(
+      
+      helpText("Choose your options"),
+  
+      radioButtons(inputId="checkGroup", label=h3(strong("Scope of Increase")), 
+                   choices=c("Female", "All")),
+      
+      sliderInput("range", 
+                  label = h3(strong("CompaRatio Threshold")),
+                  min = 0, max = 100, value = c(90)),
+      
+      sliderInput("increase", 
+                  label = h3(strong("Increase in %")),
+                  min = 1, max = 2, value = c(1.05))
+    
+    ),
+  mainPanel(
+    fluidRow(
+      column(10,
+             box(title = "Title",
+                 plotOutput("scatter")
+                 )
+             ),
+      column(2,
+             box(title = "Title", status = "primary", align = "right",
+                 textOutput("Costs"), br(),
+                 textOutput("UnadjustedGap"), br(),
+                 textOutput("Adjusted_Gap")
+                 )
+             )
+      )
+    )
+  )
+)
