@@ -1,7 +1,7 @@
 # Define UI ----
 ui <- fluidPage(theme = shinytheme("flatly"),
   titlePanel(
-    h1(strong("Pay Equity Calculator"), align = "center")),
+    h1(strong("Title"), align = "center")),
   
   sidebarLayout(
     sidebarPanel(
